@@ -1,0 +1,20 @@
+{
+    "name": "VoxelEngine.VoroniStandard",
+    "rootNamespace": "",
+    "references": [
+        "GUID:e38688a807803474795e55f51a7dead5",
+        "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:2665a8d13d1b3f18800f46e256720795",
+        "GUID:b2ae2c7591ce7114882750b06e60e377",
+        "GUID:bf865e713a7c31944aab5a3702cdbc02"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
