@@ -3,6 +3,7 @@ using System;
 
 namespace VoxelEngine
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(VoxelObjHolder))]
     public class VoxelObjHolder : MonoBehaviour
     {
         private VoxelObj _myVoxelObj = null;

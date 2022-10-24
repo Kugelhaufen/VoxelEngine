@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace VoxelEngine
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(VoxelObj))]
     public class VoxelObj : MonoBehaviour
     {
         // "Constants" (can be changed (const is faster than static readonly))

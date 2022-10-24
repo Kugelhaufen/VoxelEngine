@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace VoxelEngine
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(VoxelObjVoxelCountDestroyer))]
     [RequireComponent(typeof(VoxelObj))]
     public class VoxelObjVoxelCountDestroyer : MonoBehaviour
     {

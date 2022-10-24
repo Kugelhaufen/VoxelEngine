@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace VoxelEngine.ConnectedComponent
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(ConnectedComponentPhysics))]
     [RequireComponent(typeof(VoxelObj))]
     public class ConnectedComponentPhysics : MonoBehaviour
     {

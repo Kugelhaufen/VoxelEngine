@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace VoxelEngine.ConnectedComponent
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(VoxelObjAmountManager))]
     public class VoxelObjAmountManager : MonoBehaviour
     {
         private static VoxelObjAmountManager instance;

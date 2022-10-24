@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace VoxelEngine
 {
+    [AddComponentMenu("VoxelEngine/" + nameof(VoxelObjStartInitializer))]
     public class VoxelObjStartInitializer : MonoBehaviour
     {
         public bool immediateUpdate;
