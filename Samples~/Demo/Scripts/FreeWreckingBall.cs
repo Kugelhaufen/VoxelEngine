@@ -86,9 +86,12 @@ namespace VoxelEngineDemo
 
         private void OnFracturerCompleted(VoxelObj[] shrapnelObjs)
         {
-            foreach (VoxelObj shrapnel in shrapnelObjs)
+            if(VoxelObjAmountManager.Instance != null)
             {
-                VoxelObjAmountManager.Instance.AddVoxelObjToManagement(shrapnel);
+                foreach (VoxelObj shrapnel in shrapnelObjs)
+                {
+                    VoxelObjAmountManager.Instance.AddVoxelObjToManagement(shrapnel);
+                }
             }
 
             if (myRigidbody != null)

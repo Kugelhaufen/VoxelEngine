@@ -6,19 +6,8 @@ namespace VoxelEngine.ConnectedComponent
 {
     public class VoxelObjAmountManager : MonoBehaviour
     {
-        private static VoxelObjAmountManager myInstance;
-        public static VoxelObjAmountManager Instance
-        {
-            get
-            {
-                if (myInstance == null)
-                {
-                    GameObject obj = new GameObject();
-                    myInstance = obj.AddComponent<VoxelObjAmountManager>();
-                }
-                return myInstance;
-            }
-        }
+        private static VoxelObjAmountManager instance;
+        public static VoxelObjAmountManager Instance { get => instance; }
 
         public int maxManagedBoxColliderCount = 3500;
         public int hysteresis = 0;
@@ -31,13 +20,22 @@ namespace VoxelEngine.ConnectedComponent
 
         private void Awake()
         {
-            if (myInstance == null) myInstance = this;
+            if (instance == null) instance = this;
             else Destroy(this);
         }
 
         private void Start()
         {
             ConnectedComponentPhysics.anyCclNewVoxelObjsUpdateCompletion += OnAnyCclComplete;
+        }
+
+        public static void CreateInstance()
+        {
+            if (instance == null)
+            {
+                GameObject go = new GameObject("VoxelObjAmountManager");
+                instance = go.AddComponent<VoxelObjAmountManager>();
+            }
         }
 
         private void OnAnyCclComplete(VoxelObj[] newVoxelObjs)
