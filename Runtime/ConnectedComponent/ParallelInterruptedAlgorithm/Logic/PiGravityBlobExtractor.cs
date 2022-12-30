@@ -24,6 +24,8 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
             LabelMapExtractionInternal(voxelObj, labelMap, blobAmount, minVoxelsForNewExtraction, true, callBack);
         }
 
+
+
         private void LabelMapExtractionInternal(VoxelObj voxelObj, NativeArray<int> labelMap, int blobAmount, int minVoxelsForNewExtraction, bool immediate, IPiBlobExtractor.CallBack callBack)
         {
             if (blobAmount <= 1)
@@ -32,16 +34,21 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                 callBack.Invoke(new VoxelObj[0], false, applyChanges);
                 return;
             }
+            
+            var biggestBlobAxisValues = new NativeArray<int3>(blobAmount + 1, Allocator.Persistent);
+            var smallestBlobAxisValues = new NativeArray<int3>(blobAmount + 1, Allocator.Persistent);
+            var voxelsInBlob = new NativeArray<int>(blobAmount + 1, Allocator.Persistent);
+            var largestBlobLabel = new NativeArray<int>(1, Allocator.Persistent);
 
             BlobAnalysisJob analysisJob = new BlobAnalysisJob
             {
                 labelMapInput = labelMap,
                 labelMapDemensionsInput = voxelObj.VoxelMap.dimensions,
                 emptyLabelValueInput = 0,
-                biggestBlobAxisValues = new NativeArray<int3>(blobAmount + 1, Allocator.Persistent),
-                smallestBlobAxisValues = new NativeArray<int3>(blobAmount + 1, Allocator.Persistent),
-                voxelsInBlob = new NativeArray<int>(blobAmount + 1, Allocator.Persistent),
-                largestBlobLabel = new NativeArray<int>(1, Allocator.Persistent)
+                biggestBlobAxisValues = biggestBlobAxisValues,
+                smallestBlobAxisValues = smallestBlobAxisValues,
+                voxelsInBlob = voxelsInBlob,
+                largestBlobLabel = largestBlobLabel
             };
 
             IDisposable[] analysisJobDisposables = new IDisposable[]
@@ -79,19 +86,21 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
             }
             else
             {
-                JobCallbackManager.Register(analysisHandle, OnJobCompletion, analysisJobDisposables, OnCanceled);
-                JobCallbackManager.Register(gravityJobHandle, OnJobCompletion, gravityJobDisposables, OnCanceled);
+                JobCallbackManager.Register(analysisHandle, OnJobCompletion, OnCanceled);
+                JobCallbackManager.Register(gravityJobHandle, OnJobCompletion, OnCanceled);
             }
 
             return;
 
             void OnCanceled()
             {
+                if (canceled == true) return;
+                
                 canceled = true;
                 analysisHandle.Complete();
                 gravityJobHandle.Complete();
-                foreach (IDisposable d in analysisJobDisposables) d?.Dispose();
-                foreach (IDisposable d in gravityJobDisposables) d?.Dispose();
+                foreach (IDisposable d in analysisJobDisposables) d.Dispose();
+                foreach (IDisposable d in gravityJobDisposables) d.Dispose();
                 labelMap.Dispose();
             }
 
@@ -121,7 +130,7 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                     voxelObj = voxelObj
                 };
 
-                gravityJobDisposables[0].Dispose();
+                foreach (IDisposable d in gravityJobDisposables) d.Dispose();
 
                 var extractionResult = blobExtractor.ExtractBlobs(blobExtractionData, analysisJob);
                 callBack(extractionResult.extractedBlobs, extractionResult.originalVoxelObjMapEdited, extractionResult.applyOriginalVoxelObjMapChanges);

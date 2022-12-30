@@ -42,9 +42,11 @@ namespace VoxelEngine
                     obj.SetActive(false);
                     obj.name = "Chunk";
 
-                    obj.AddComponent<MeshCollider>();
+                    var collider = obj.AddComponent<MeshCollider>();
                     obj.AddComponent<MeshFilter>();
                     obj.AddComponent<MeshRenderer>();
+
+                    collider.cookingOptions = MeshColliderCookingOptions.UseFastMidphase;
 
                     _runtimePrefab = obj.AddComponent<Chunk>();
                 }

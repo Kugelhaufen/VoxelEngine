@@ -99,7 +99,7 @@ namespace VoxelEngine.ConnectedComponent
                 }
                 LoopThroughBlobsInOriginalVoxelObj(analysisJob, extractionData.blobAmount, extractionData.doNotExtractLabel, extractionData.voxelObj, fillBlobVoxelMap);
 
-                //Method for editing original voxelobj (can be called later when needed)
+                //Method for editing original voxelobj (can be called later when needed) (e.g useful to prevent flickering)
                 void applyChangesToOriginalVoxelObj()
                 {
                     if (originalVoxelObjEdited == false)
@@ -143,7 +143,7 @@ namespace VoxelEngine.ConnectedComponent
                     originalVoxelObjMapEdited = originalVoxelObjEdited,
                     applyOriginalVoxelObjMapChanges = applyChangesToOriginalVoxelObj
                 };
-
+                
                 return returnValue;
             }
             catch (Exception ex)
