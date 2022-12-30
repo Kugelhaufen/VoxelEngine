@@ -38,8 +38,6 @@ namespace VoxelEngine.ConnectedComponent
             //voxelObj might have been destroyed while jobs were executed
             if(extractionData.voxelObj == null)
             {
-                DisposeBlobAnalysisJob(analysisJob);
-
                 return new BlobExtractionResult()
                 {
                     applyOriginalVoxelObjMapChanges = () => { },
@@ -50,108 +48,99 @@ namespace VoxelEngine.ConnectedComponent
 
             List<VoxelObj> newVoxelObjs = new List<VoxelObj>();
 
-            try
+            //create new voxelObjs
+            VoxelObj[] blobVoxelObjs = new VoxelObj[extractionData.blobAmount + 1];
+            for (int blob = 1; blob != blobVoxelObjs.Length; blob++)
             {
-                //create new voxelObjs
-                VoxelObj[] blobVoxelObjs = new VoxelObj[extractionData.blobAmount + 1];
-                for (int blob = 1; blob != blobVoxelObjs.Length; blob++)
+                if (blob == extractionData.doNotExtractLabel) continue;
+
+                originalVoxelObjEdited = true;
+
+                if (analysisJob.voxelsInBlob[blob] < extractionData.minVoxelsForNewExtraction)
                 {
-                    if (blob == extractionData.doNotExtractLabel) continue;
-
-                    originalVoxelObjEdited = true;
-
-                    if (analysisJob.voxelsInBlob[blob] < extractionData.minVoxelsForNewExtraction)
-                    {
-                        continue;
-                    }
-
-                    blobVoxelObjs[blob] = extractionData.voxelObj.InstantiateVoxelObj();
-                    Vector3 blobLocalSpaceStartPos = new Vector3
-                        (
-                        analysisJob.smallestBlobAxisValues[blob].x * VoxelObj.voxelSize,
-                        analysisJob.smallestBlobAxisValues[blob].y * VoxelObj.voxelSize,
-                        analysisJob.smallestBlobAxisValues[blob].z * VoxelObj.voxelSize
-                        );
-                    Vector3 blobWorldSpaceStartPos = extractionData.voxelObj.GetVoxelObjHolder().transform.TransformPoint(blobLocalSpaceStartPos);
-                    blobVoxelObjs[blob].GetVoxelObjHolder().transform.position = blobWorldSpaceStartPos;
-                    blobVoxelObjs[blob].GetVoxelObjHolder().transform.rotation = extractionData.voxelObj.GetVoxelObjHolder().transform.rotation;
-                    blobVoxelObjs[blob].SetChunkMaterial(extractionData.voxelObj.ChunkMaterial);
-
-                    int3 blobMapSizes = new int3(analysisJob.biggestBlobAxisValues[blob].x - analysisJob.smallestBlobAxisValues[blob].x + 1, analysisJob.biggestBlobAxisValues[blob].y - analysisJob.smallestBlobAxisValues[blob].y + 1, analysisJob.biggestBlobAxisValues[blob].z - analysisJob.smallestBlobAxisValues[blob].z + 1);
-                    blobVoxelObjs[blob].CreateEmptyVoxelMap(blobMapSizes);
-
-                    newVoxelObjs.Add(blobVoxelObjs[blob]);
+                    continue;
                 }
 
-                //Fill blob voxelmaps
-                void fillBlobVoxelMap(int blob, int index, int3 index3d)
+                blobVoxelObjs[blob] = extractionData.voxelObj.InstantiateVoxelObj();
+                Vector3 blobLocalSpaceStartPos = new Vector3
+                    (
+                    analysisJob.smallestBlobAxisValues[blob].x * VoxelObj.voxelSize,
+                    analysisJob.smallestBlobAxisValues[blob].y * VoxelObj.voxelSize,
+                    analysisJob.smallestBlobAxisValues[blob].z * VoxelObj.voxelSize
+                    );
+                Vector3 blobWorldSpaceStartPos = extractionData.voxelObj.GetVoxelObjHolder().transform.TransformPoint(blobLocalSpaceStartPos);
+                blobVoxelObjs[blob].GetVoxelObjHolder().transform.position = blobWorldSpaceStartPos;
+                blobVoxelObjs[blob].GetVoxelObjHolder().transform.rotation = extractionData.voxelObj.GetVoxelObjHolder().transform.rotation;
+                blobVoxelObjs[blob].SetChunkMaterial(extractionData.voxelObj.ChunkMaterial);
+
+                int3 blobMapSizes = new int3(analysisJob.biggestBlobAxisValues[blob].x - analysisJob.smallestBlobAxisValues[blob].x + 1, analysisJob.biggestBlobAxisValues[blob].y - analysisJob.smallestBlobAxisValues[blob].y + 1, analysisJob.biggestBlobAxisValues[blob].z - analysisJob.smallestBlobAxisValues[blob].z + 1);
+                blobVoxelObjs[blob].CreateEmptyVoxelMap(blobMapSizes);
+
+                newVoxelObjs.Add(blobVoxelObjs[blob]);
+            }
+
+            //Fill blob voxelmaps
+            void fillBlobVoxelMap(int blob, int index, int3 index3d)
+            {
+                if (analysisJob.labelMapInput[index] == blob)
+                {
+                    if (analysisJob.voxelsInBlob[blob] > extractionData.minVoxelsForNewExtraction)
+                    {
+                        int3 currentBlobVoxelMapIndex = index3d - analysisJob.smallestBlobAxisValues[blob];
+                        int currentFlatBlobVoxelMapIndex = VoxelMap.GetFlatMapIndex(currentBlobVoxelMapIndex, blobVoxelObjs[blob].VoxelMap.dimensions);
+
+                        blobVoxelObjs[blob].VoxelMap.voxelData[currentFlatBlobVoxelMapIndex] = extractionData.voxelObj.VoxelMap.voxelData[index];
+                    }
+                }
+            }
+            LoopThroughBlobsInOriginalVoxelObj(analysisJob, extractionData.blobAmount, extractionData.doNotExtractLabel, extractionData.voxelObj, fillBlobVoxelMap);
+
+            //Find indeces that that are part of blobs that are being extracted. Save these indeces so they can be used in applyChangesToOriginalVoxelObj() later.
+            //This is to prevent having any Native Collections be used in applyChangesToOriginalVoxelObj() which is a potential risk for a memory leak
+            Queue<int> filledValueFalseIndices = new();
+            if (originalVoxelObjEdited)
+            {
+                void FindFalseFilledValuseIndices(int blob, int index, int3 index3d)
                 {
                     if (analysisJob.labelMapInput[index] == blob)
                     {
-                        if (analysisJob.voxelsInBlob[blob] > extractionData.minVoxelsForNewExtraction)
-                        {
-                            int3 currentBlobVoxelMapIndex = index3d - analysisJob.smallestBlobAxisValues[blob];
-                            int currentFlatBlobVoxelMapIndex = VoxelMap.GetFlatMapIndex(currentBlobVoxelMapIndex, blobVoxelObjs[blob].VoxelMap.dimensions);
-
-                            blobVoxelObjs[blob].VoxelMap.voxelData[currentFlatBlobVoxelMapIndex] = extractionData.voxelObj.VoxelMap.voxelData[index];
-                        }
+                        filledValueFalseIndices.Enqueue(index);
                     }
                 }
-                LoopThroughBlobsInOriginalVoxelObj(analysisJob, extractionData.blobAmount, extractionData.doNotExtractLabel, extractionData.voxelObj, fillBlobVoxelMap);
-
-                //Method for editing original voxelobj (can be called later when needed) (e.g useful to prevent flickering)
-                void applyChangesToOriginalVoxelObj()
-                {
-                    if (originalVoxelObjEdited == false)
-                    {
-                        return;
-                    }
-
-                    bool voxelObjHasBeenDestroyed = extractionData.voxelObj == null;
-                    if (voxelObjHasBeenDestroyed)
-                    {
-                        DisposeBlobAnalysisJob(analysisJob);
-                        return;
-                    }
-
-                    void editOriginaleVoxelObj(int blob, int index, int3 index3d)
-                    {
-                        if (analysisJob.labelMapInput[index] == blob)
-                        {
-                            extractionData.voxelObj.SetVoxelFilledValue(index3d, false);
-                        }
-                    }
-                    LoopThroughBlobsInOriginalVoxelObj(analysisJob, extractionData.blobAmount, extractionData.doNotExtractLabel ,extractionData.voxelObj, editOriginaleVoxelObj);
-
-                    DisposeBlobAnalysisJob(analysisJob);
-                }
-
-                Queue<VoxelObj> _newVoxelObjs = new Queue<VoxelObj>();
-                foreach (VoxelObj obj in blobVoxelObjs)
-                {
-                    if (obj != null) _newVoxelObjs.Enqueue(obj);
-                }
-
-                if (originalVoxelObjEdited == false)
-                {
-                    DisposeBlobAnalysisJob(analysisJob);
-                }
-
-                var returnValue = new BlobExtractionResult()
-                {
-                    extractedBlobs = _newVoxelObjs.ToArray(),
-                    originalVoxelObjMapEdited = originalVoxelObjEdited,
-                    applyOriginalVoxelObjMapChanges = applyChangesToOriginalVoxelObj
-                };
-                
-                return returnValue;
+                LoopThroughBlobsInOriginalVoxelObj(analysisJob, extractionData.blobAmount, extractionData.doNotExtractLabel, extractionData.voxelObj, FindFalseFilledValuseIndices);
             }
-            catch (Exception ex)
+
+            //Method for editing original voxelobj (can be called later when needed) (e.g useful to prevent flickering)
+            void applyChangesToOriginalVoxelObj()
             {
-                DisposeBlobAnalysisJob(analysisJob);
-                analysisJob.labelMapInput.Dispose();
-                throw ex;
+                if (originalVoxelObjEdited == false) return;
+
+                bool voxelObjHasBeenDestroyed = extractionData.voxelObj == null;
+                if (voxelObjHasBeenDestroyed)
+                {
+                    return;
+                }
+
+                foreach (int index in filledValueFalseIndices)
+                {
+                    extractionData.voxelObj.SetVoxelFilledValue(index, false);
+                }
             }
+
+            Queue<VoxelObj> _newVoxelObjs = new Queue<VoxelObj>();
+            foreach (VoxelObj obj in blobVoxelObjs)
+            {
+                if (obj != null) _newVoxelObjs.Enqueue(obj);
+            }
+
+            var returnValue = new BlobExtractionResult()
+            {
+                extractedBlobs = _newVoxelObjs.ToArray(),
+                originalVoxelObjMapEdited = originalVoxelObjEdited,
+                applyOriginalVoxelObjMapChanges = applyChangesToOriginalVoxelObj
+            };
+
+            return returnValue;
         }
 
         private delegate void BlobVoxelMapLoop(int blob, int index, int3 index3d);
@@ -192,18 +181,6 @@ namespace VoxelEngine.ConnectedComponent
                     index = VoxelMap.GetFlatMapIndex(index3d, originalVoxelObj.VoxelMap.dimensions);
                 }
             }
-        }
-
-        /// <summary>
-        /// Disposes all NativeArrays etc in the BlobAnalysisJob (except fot <see cref="BlobAnalysisJob.labelMapInput"/>)
-        /// </summary>
-        /// <param name="blobAnalysisJob"></param>
-        private void DisposeBlobAnalysisJob(BlobAnalysisJob blobAnalysisJob)
-        {
-            blobAnalysisJob.smallestBlobAxisValues.Dispose();
-            blobAnalysisJob.biggestBlobAxisValues.Dispose();
-            blobAnalysisJob.voxelsInBlob.Dispose();
-            blobAnalysisJob.largestBlobLabel.Dispose();
         }
     }
 }

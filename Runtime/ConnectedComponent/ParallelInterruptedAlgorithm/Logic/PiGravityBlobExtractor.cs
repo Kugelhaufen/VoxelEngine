@@ -8,7 +8,7 @@ using UnityEngine;
 namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
 {
     /// <summary>
-    /// Extracts all lables from the VoxelObj except the ones that has the most voxels in the lowest (non empty) Y Layer. (Very basic gravity simulation)
+    /// Extracts all labels from the VoxelObj except the ones that has the most voxels in the lowest (non empty) Y Layer. (Very basic gravity simulation)
     /// </summary>
     public class PiGravityBlobExtractor : IPiBlobExtractor
     {
@@ -24,13 +24,12 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
             LabelMapExtractionInternal(voxelObj, labelMap, blobAmount, minVoxelsForNewExtraction, true, callBack);
         }
 
-
-
         private void LabelMapExtractionInternal(VoxelObj voxelObj, NativeArray<int> labelMap, int blobAmount, int minVoxelsForNewExtraction, bool immediate, IPiBlobExtractor.CallBack callBack)
         {
             if (blobAmount <= 1)
             {
                 void applyChanges() { }
+                labelMap.Dispose();
                 callBack.Invoke(new VoxelObj[0], false, applyChanges);
                 return;
             }
@@ -99,6 +98,11 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                 canceled = true;
                 analysisHandle.Complete();
                 gravityJobHandle.Complete();
+                DisposeAll();
+            }
+
+            void DisposeAll()
+            {
                 foreach (IDisposable d in analysisJobDisposables) d.Dispose();
                 foreach (IDisposable d in gravityJobDisposables) d.Dispose();
                 labelMap.Dispose();
@@ -130,9 +134,8 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                     voxelObj = voxelObj
                 };
 
-                foreach (IDisposable d in gravityJobDisposables) d.Dispose();
-
                 var extractionResult = blobExtractor.ExtractBlobs(blobExtractionData, analysisJob);
+                DisposeAll();
                 callBack(extractionResult.extractedBlobs, extractionResult.originalVoxelObjMapEdited, extractionResult.applyOriginalVoxelObjMapChanges);
             }
         }

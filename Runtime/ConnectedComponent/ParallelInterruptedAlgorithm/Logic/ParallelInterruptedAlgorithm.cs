@@ -22,22 +22,7 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                 piBlobExtractor.LabelMapExtraction(voxelObj, labelMap, blobCount, minBlobVoxelCountForExtraction, onMapExtractionComplete);
                 void onMapExtractionComplete(VoxelObj[] newVoxelObjs, bool originalVoxelObjEdited, Action applyVoxelObjChanges)
                 {
-                    if (originalVoxelObjEdited == false)
-                    {
-                        labelMap.Dispose();
-                    }
-
-                    callBack.Invoke(voxelObj, originalVoxelObjEdited, applyChanges, newVoxelObjs);
-                    void applyChanges()
-                    {
-                        if (originalVoxelObjEdited == false)
-                        {
-                            return;
-                        }
-
-                        applyVoxelObjChanges.Invoke();
-                        labelMap.Dispose();
-                    }
+                    callBack.Invoke(voxelObj, originalVoxelObjEdited, applyVoxelObjChanges, newVoxelObjs);
                 }
             }
         }
@@ -50,22 +35,7 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                 piBlobExtractor.LabelMapExtractionImmediate(voxelObj, labelMap, blobCount, minBlobVoxelCountForExtraction, onMapExtractionComplete);
                 void onMapExtractionComplete(VoxelObj[] newVoxelObjs, bool originalVoxelObjEdited, Action applyVoxelObjChanges)
                 {
-                    if (originalVoxelObjEdited == false)
-                    {
-                        labelMap.Dispose();
-                    }
-
-                    callBack.Invoke(voxelObj, originalVoxelObjEdited, applyChanges, newVoxelObjs);
-                    void applyChanges()
-                    {
-                        if (originalVoxelObjEdited == false)
-                        {
-                            return;
-                        }
-
-                        applyVoxelObjChanges.Invoke();
-                        labelMap.Dispose();
-                    }
+                    callBack.Invoke(voxelObj, originalVoxelObjEdited, applyVoxelObjChanges, newVoxelObjs);
                 }
             }
         }
