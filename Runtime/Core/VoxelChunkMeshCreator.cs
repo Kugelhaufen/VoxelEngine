@@ -1,9 +1,9 @@
-using VoxelEngine.Jobs;
 using System;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using VoxelEngine.Jobs;
 
 namespace VoxelEngine
 {
@@ -33,7 +33,7 @@ namespace VoxelEngine
 
             if (jobHandle.IsCompleted == false)
             {
-                JobCallbackManager.Register(jobHandle, OnMeshJobCompletion, OnJobCanceled);
+                JobCallbackManager.Register(jobHandle, OnMeshJobCompletion, OnJobCanceled, mapInput);
             }
             else
             {

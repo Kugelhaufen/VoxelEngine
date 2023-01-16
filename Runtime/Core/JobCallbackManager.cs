@@ -9,6 +9,7 @@ namespace VoxelEngine
     {
         private static JobCallbackManager instance;
         private Queue<CallbackData> callbackDataQueue = new Queue<CallbackData>();
+        private bool canceled = false;
 
         struct CallbackData
         {
@@ -17,7 +18,7 @@ namespace VoxelEngine
             public ICollection<IDisposable> disposeOnCancel;
             public Action callOnCancel;
         }
-        
+
         private void Awake()
         {
             if (instance == null)
@@ -29,6 +30,7 @@ namespace VoxelEngine
 
         private void OnDestroy()
         {
+            canceled = true;
             CancelCallBack();
         }
 
@@ -75,25 +77,30 @@ namespace VoxelEngine
             }
         }
 
-        public static void Register(JobHandle jobHandle, Action callOnCompletion, Action callOnCancel)
+        public static void Register(JobHandle jobHandle, Action callOnCompletion, params IDisposable[] disposables)
         {
             CreateInstanceIfNull();
-            instance._Register(jobHandle, callOnCompletion, null, callOnCancel);
+            instance._Register(jobHandle, callOnCompletion, null, disposables);
         }
 
-        public static void Register(JobHandle jobHandle, Action callOnCompletion, ICollection<IDisposable> disposeOnCancel = null, Action callOnCancel = null)
+        public static void Register(JobHandle jobHandle, Action callOnCompletion, Action callOnCancel, params IDisposable[] disposables)
         {
             CreateInstanceIfNull();
-            instance._Register(jobHandle, callOnCompletion, disposeOnCancel, callOnCancel);
+            instance._Register(jobHandle, callOnCompletion, callOnCancel, disposables);
         }
 
-        private void _Register(JobHandle jobHandle, Action callOnCompletion, ICollection<IDisposable> disposeOnCancel = null, Action callOnCancel = null)
+        private void _Register(JobHandle jobHandle, Action callOnCompletion, Action callOnCancel, params IDisposable[] disposables)
         {
+            if(canceled)
+            {
+                throw new InvalidOperationException("You can't register a job while the JobCallbackManager is executing onCancel");
+            }
+
             var callbackData = new CallbackData
             {
                 jobHandle = jobHandle,
                 callOnCompletion = callOnCompletion,
-                disposeOnCancel = disposeOnCancel,
+                disposeOnCancel = disposables,
                 callOnCancel = callOnCancel
             };
 

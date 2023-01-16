@@ -156,7 +156,7 @@ namespace VoxelEngine.ConnectedComponent.ParallelInterruptedAlgorithm
                 }
                 else
                 {
-                    JobCallbackManager.Register(reLableHandle, onCclCompletion, disposables);
+                    JobCallbackManager.Register(reLableHandle, onCclCompletion, disposables.ToArray());
                 }
 
                 void onCclCompletion()
