@@ -122,12 +122,20 @@ namespace VoxelEngine
             if(isKinematic == true)
             {
                 MyRigidBody.isKinematic = true;
+#if UNITY_6000_0_OR_NEWER
+                savedVelocity = MyRigidBody.linearVelocity;
+#else
                 savedVelocity = MyRigidBody.velocity;
+#endif
             }
             else
             {
                 MyRigidBody.isKinematic = false;
+#if UNITY_6000_0_OR_NEWER
+                MyRigidBody.linearVelocity = savedVelocity;
+#else
                 MyRigidBody.velocity = savedVelocity;
+#endif
             }
         }
 

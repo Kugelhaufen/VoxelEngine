@@ -32,7 +32,12 @@ namespace VoxelEngineDemo
 
         private void Start()
         {
-            startVelocity = myRigidbody.velocity;
+#if UNITY_6000_0_OR_NEWER
+	        startVelocity = myRigidbody.linearVelocity;
+#else
+	        startVelocity = myRigidbody.velocity;
+#endif
+            
             fracturerRadius = sphereFractureSettings.fractureVoxelRadius;
             fracturerSeedRadius = sphereFractureSettings.seedSpawnWorldSpaceRadius;
         }
@@ -41,7 +46,11 @@ namespace VoxelEngineDemo
         {
             if (fracturing == false)
             {
+#if UNITY_6000_0_OR_NEWER
+                lastVelocity = myRigidbody.linearVelocity;
+#else
                 lastVelocity = myRigidbody.velocity;
+#endif
                 lastPosition = this.transform.position;
                 lastRotation = this.transform.rotation;
             }
@@ -97,7 +106,11 @@ namespace VoxelEngineDemo
             if (myRigidbody != null)
             {
                 myRigidbody.isKinematic = false;
+#if UNITY_6000_0_OR_NEWER
+                myRigidbody.linearVelocity = lastVelocity * myVelocityMultipierAfterFracture;
+#else
                 myRigidbody.velocity = lastVelocity * myVelocityMultipierAfterFracture;
+#endif
             }
             fracturing = false;
         }

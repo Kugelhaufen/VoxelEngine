@@ -25,7 +25,11 @@ namespace VoxelEngineDemo
             if (projectileRigidbody != null)
             {
                 Vector3 velocity = Vector3.Normalize(target - projectile.transform.position) * projectileSpeed;
+#if UNITY_6000_0_OR_NEWER
+                projectileRigidbody.linearVelocity = velocity;
+#else
                 projectileRigidbody.velocity = velocity;
+#endif
             }
             else Debug.LogWarning("StandardWeapon cant apply speed to projectile because the projectile does not have a rigidbody");
         }
