@@ -1,6 +1,9 @@
 ﻿using VoxelEngine;
 using Unity.Mathematics;
 using UnityEngine;
+#if UNITY_2020_2_OR_NEWER && ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace VoxelEngineDemo
 {
@@ -80,6 +83,40 @@ namespace VoxelEngineDemo
             CheckIfNewVoxelMap();
 
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
+#if UNITY_2020_2_OR_NEWER && ENABLE_INPUT_SYSTEM
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                lastFrameMousePosX = Mouse.current.position.ReadValue().x;
+                lastFrameMousePosY = Mouse.current.position.ReadValue().y;
+                currentTouchTotalRotationChange = new Vector3();
+            }
+
+            if (Mouse.current != null && Mouse.current.leftButton.isPressed)
+            {
+                Vector2 mousePosition = Mouse.current.position.ReadValue();
+                float addRotY = ((mousePosition.x - lastFrameMousePosX) / Screen.width) * 90;
+                float addRotX = -((mousePosition.y - lastFrameMousePosY) / Screen.height) * 90;
+                AddToRotaion(addRotX, addRotY);
+
+                lastFrameMousePosX = mousePosition.x;
+                lastFrameMousePosY = mousePosition.y;
+            }
+
+            if (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
+            {
+                Vector2 lastScreenPos = new Vector2(lastFrameMousePosX, lastFrameMousePosY);
+                CheckForShootTrigger(lastScreenPos);
+            }
+
+            if (Mouse.current != null && Mouse.current.scroll.ReadValue().y != 0)
+            {
+                int scrollValue = Mouse.current.scroll.ReadValue().y > 0 ? 1 : -1;
+                if (scrollValue != 0)
+                {
+                    weaponManager.NextWeapon();
+                }
+            }
+#else
             if (Input.GetMouseButtonDown(0))
             {
                 lastFrameMousePosX = Input.mousePosition.x;
@@ -109,9 +146,34 @@ namespace VoxelEngineDemo
                 weaponManager.NextWeapon();
             }
 #endif
+#endif
 
 #if UNITY_ANDROID || UNITY_IOS
+#if UNITY_2020_2_OR_NEWER && ENABLE_INPUT_SYSTEM
+            if (Touchscreen.current != null && Touchscreen.current.touches.Count > 0)
+            {
+                var touchOne = Touchscreen.current.touches[0];
+                
+                if (touchOne.phase.ReadValue() == UnityEngine.InputSystem.TouchPhase.Began)
+                {
+                    currentTouchTotalRotationChange = new Vector3();
+                }
 
+                if (touchOne.phase.ReadValue() == UnityEngine.InputSystem.TouchPhase.Moved)
+                {
+                    Vector2 touchDelta = touchOne.delta.ReadValue();
+                    float addRotY = touchDelta.x / Screen.width * rotationSensitivity;
+                    float addRotX = -(touchDelta.y / Screen.height * rotationSensitivity);
+
+                    AddToRotaion(addRotX, addRotY);
+                }
+
+                if (touchOne.phase.ReadValue() == UnityEngine.InputSystem.TouchPhase.Ended)
+                {
+                    CheckForShootTrigger(touchOne.position.ReadValue());
+                }
+            }
+#else
             if (Input.touchCount > 0)
             {
                 Touch touchOne = Input.GetTouch(0);
@@ -134,6 +196,7 @@ namespace VoxelEngineDemo
                     CheckForShootTrigger(touchOne.position);
                 }
             }
+#endif
 #endif
         }
 
