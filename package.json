@@ -1,0 +1,26 @@
+{
+  "name": "dev.kugelhaufen.voxelengine",
+  "version": "1.2.2",
+  "displayName": "VoxelEngine",
+  "description": "VoxelEngine with destruction physics for Unity",
+  "unity": "2022.3",
+  "documentationUrl": "https://github.com/Kugelhaufen/VoxelEngine",
+  "changelogUrl": "https://github.com/Kugelhaufen/VoxelEngine",
+  "licensesUrl": "https://github.com/Kugelhaufen/VoxelEngine",
+  "dependencies": {
+    "com.unity.burst": "1.8.19",
+    "com.unity.test-framework.performance": "3.0.3",
+    "com.unity.collections": "2.5.3"
+  },
+  "samples": [
+    {
+      "displayName": "VoxelEngine Demo",
+      "description": "Small demo game for the VoxelEngine. In the demo scene: click to shoot, mouse wheel to change weapons, drag mouse to move the camera (touchscreen is also supported).",
+      "path": "Samples~/Demo"
+    }
+  ],
+  "author": {
+    "name": "Kugelhaufen",
+    "url": "https://github.com/Kugelhaufen"
+  }
+}
