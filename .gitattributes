@@ -126,3 +126,6 @@
 *.gz lfs
 *.rar lfs
 *.tar lfs
+
+# Disable LFS for icons
+Runtime/Core/Icons/* -filter=lfs -diff=lfs -merge=lfs
