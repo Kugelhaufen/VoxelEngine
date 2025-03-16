@@ -335,6 +335,7 @@ namespace VoxelEngine.EditorTools
 
             AssetDatabase.CreateAsset(serializedVoxelMap, "Assets/" + assetName + ".asset");
             AssetDatabase.SaveAssets();
+            Debug.Log("VoxelMap saved at: " + Application.dataPath + "/" + assetName + ".asset");
         }
     }
 #endif
