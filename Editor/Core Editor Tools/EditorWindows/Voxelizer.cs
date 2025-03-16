@@ -13,7 +13,7 @@ namespace VoxelEngine.EditorTools
 
         private Transform voxelizeTransform;
         private bool includeChildren = true;
-        private float _voxelSize = VoxelObj.voxelSize;
+        private float _voxelSize = 1;
         private string _assetName = "NewVoxelObj";
 
         private string newMapSizeLabelText = "";
@@ -37,6 +37,7 @@ namespace VoxelEngine.EditorTools
                 voxelizeTransform = (Transform)EditorGUILayout.ObjectField("Transform: ", voxelizeTransform, typeof(Transform), true);
                 includeChildren = EditorGUILayout.Toggle("Include Transform Children", includeChildren);
                 _voxelSize = EditorGUILayout.FloatField("Scan VoxelSize: ", _voxelSize);
+                EditorGUILayout.HelpBox("For best results do NOT use very small voxel scan sizes (e.g. below 0.1).", MessageType.Info);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Bounds bounds = GetTotalBounds(GetMeshColliders());
