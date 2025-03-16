@@ -27,61 +27,104 @@ namespace VoxelEngine.EditorTools
         private void OnGUI()
         {
             EditorGUILayout.BeginVertical("Box");
-            EditorGUILayout.HelpBox($"A GameObject must have a MeshCollider in order to be voxelized.{Environment.NewLine}You can use the {nameof(MeshColliderTool)} to add Meshcolliders to gameobjects.", MessageType.Info);
-
-            _assetName = EditorGUILayout.TextField("Name: ", _assetName);
-
-            EditorGUI.BeginChangeCheck();
-            voxelizeTransform = (Transform)EditorGUILayout.ObjectField("Obj: ", voxelizeTransform, typeof(Transform), true);
-            includeChildren = EditorGUILayout.Toggle("Include Transform Children", includeChildren);
-            _voxelSize = EditorGUILayout.FloatField("Scan VoxelSize: ", _voxelSize);
-            if (EditorGUI.EndChangeCheck())
+            try 
             {
-                Bounds bounds = GetTotalBounds(GetMeshColliders());
-                int3 mapSize = GetMapDimension(bounds, _voxelSize);
-                newMapSizeLabelText = "(" + mapSize.x + "," + mapSize.y + "," + mapSize.z + ")";
-            }        
-            EditorGUILayout.LabelField("VoxelMap size: " + newMapSizeLabelText);
+                EditorGUILayout.HelpBox($"A GameObject must have a MeshCollider in order to be voxelized.{Environment.NewLine}You can use the {nameof(MeshColliderTool)} to add Meshcolliders to gameobjects.", MessageType.Info);
 
-            EditorGUILayout.Space();
+                _assetName = EditorGUILayout.TextField("Name: ", _assetName);
 
-            if (GUILayout.Button("Convert"))
-            {
-                MeshCollider[] meshColliders = GetMeshColliders();
-
-                if(meshColliders.Length == 0)
+                EditorGUI.BeginChangeCheck();
+                voxelizeTransform = (Transform)EditorGUILayout.ObjectField("Transform: ", voxelizeTransform, typeof(Transform), true);
+                includeChildren = EditorGUILayout.Toggle("Include Transform Children", includeChildren);
+                _voxelSize = EditorGUILayout.FloatField("Scan VoxelSize: ", _voxelSize);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    EditorUtility.DisplayDialog("Warning", "No MeshColliders found", "Ok");
-                    return;
-                }
-                
-                foreach(MeshCollider meshCollider in meshColliders)
+                    Bounds bounds = GetTotalBounds(GetMeshColliders());
+                    int3 mapSize = GetMapDimension(bounds, _voxelSize);
+                    newMapSizeLabelText = "(" + mapSize.x + "," + mapSize.y + "," + mapSize.z + ")";
+                }        
+                EditorGUILayout.LabelField("VoxelMap size: " + newMapSizeLabelText);
+
+                EditorGUILayout.Space();
+
+                if (GUILayout.Button("Convert"))
                 {
-                    if(GameObject.Find(meshCollider.gameObject.name) == null)
+                    MeshCollider[] meshColliders = GetMeshColliders();
+
+                    if(meshColliders.Length == 0)
                     {
-                        EditorUtility.DisplayDialog("Warning", "All GameObjects must be in the scene in order to voxelize them!", "Ok");
+                        EditorUtility.DisplayDialog("Warning", "No MeshColliders found", "Ok");
                         return;
                     }
-                }
+                    
+                    foreach(MeshCollider meshCollider in meshColliders)
+                    {
+                        if(GameObject.Find(meshCollider.gameObject.name) == null)
+                        {
+                            EditorUtility.DisplayDialog("Warning", "All GameObjects must be in the scene in order to voxelize them!", "Ok");
+                            return;
+                        }
+                    }
 
-                if (System.IO.File.Exists(Application.dataPath + "/" + _assetName + ".asset"))
-                {
-                    bool replace = ReplaceDialogOpener.AskIfReplace(_assetName);
-                    if (replace == false) return;
-                }
+                    List<string> disabledTextures;
+                    if (!CheckTextureReadWriteAccess(meshColliders, out disabledTextures))
+                    {
+                        string message = "The following textures have Read/Write access disabled:\n\n";
+                        message += string.Join("\n", disabledTextures);
+                        message += "\n\nPlease enable Read/Write access in the texture import settings for these textures.\n(Inspector -> Advanced -> Read/Write)";
+                        EditorUtility.DisplayDialog("Texture Read/Write Access Disabled", message, "Ok");
+                        return;
+                    }
 
-                VoxelMap voxelMap = Voxelize(meshColliders, _voxelSize);
-                if (voxelMap != null) SaveVoxelMap(voxelMap, _assetName);
+                    if (System.IO.File.Exists(Application.dataPath + "/" + _assetName + ".asset"))
+                    {
+                        bool replace = ReplaceDialogOpener.AskIfReplace(_assetName);
+                        if (replace == false) return;
+                    }
+
+                    VoxelMap voxelMap = Voxelize(meshColliders, _voxelSize);
+                    if (voxelMap != null) SaveVoxelMap(voxelMap, _assetName);
+                }
             }
-            EditorGUILayout.EndVertical();
+            finally
+            {
+                EditorGUILayout.EndVertical();
+            }
 
             MeshCollider[] GetMeshColliders()
             {
+                if (voxelizeTransform == null) 
+                {
+                    return new MeshCollider[0];
+                }
+
                 MeshCollider[] returnMeshColliders;
                 if (includeChildren) returnMeshColliders = voxelizeTransform.GetComponentsInChildren<MeshCollider>();
                 else returnMeshColliders = voxelizeTransform.GetComponents<MeshCollider>();
                 return returnMeshColliders;
             }
+        }
+
+        private bool CheckTextureReadWriteAccess(MeshCollider[] meshColliders, out List<string> disabledTextures)
+        {
+            disabledTextures = new List<string>();
+            
+            foreach (MeshCollider collider in meshColliders)
+            {
+                Renderer renderer = collider.gameObject.GetComponent<Renderer>();
+                if (renderer == null || renderer.sharedMaterial == null) continue;
+                
+                if (renderer.sharedMaterial.mainTexture != null)
+                {
+                    Texture2D texture = renderer.sharedMaterial.mainTexture as Texture2D;
+                    if (texture != null && !texture.isReadable)
+                    {
+                        disabledTextures.Add($"{texture.name} (on {collider.gameObject.name})");
+                    }
+                }
+            }
+            
+            return disabledTextures.Count == 0;
         }
 
         private static Bounds GetTotalBounds(MeshCollider[] colliders)
@@ -138,71 +181,75 @@ namespace VoxelEngine.EditorTools
             float progress = 1;
             float finalProgress = voxelMap.voxelData.Length;
 
-            for (float x = scanStartPos.x; x < bounds.max.x; x += voxelSize)
+            try
             {
-                for (float y = scanStartPos.y; y < bounds.max.y; y += voxelSize)
+                for (float x = scanStartPos.x; x < bounds.max.x; x += voxelSize)
                 {
-                    for (float z = scanStartPos.z; z < bounds.max.z; z += voxelSize)
+                    for (float y = scanStartPos.y; y < bounds.max.y; y += voxelSize)
                     {
-                        bool pointContainedInMesh = checkIfPointContained(new Vector3(x, y, z), out RaycastHit closestHit, out RaycastHit[] allHits);
-
-                        //Voxelize Mehs's "walls" (voxelize RaycastHit positions)
-                        foreach (RaycastHit meshHit in allHits)
+                        for (float z = scanStartPos.z; z < bounds.max.z; z += voxelSize)
                         {
-                            int xHitIndex = Mathf.FloorToInt((meshHit.point.x -bounds.min.x) / voxelSize);
-                            int yHitIndex = Mathf.FloorToInt((meshHit.point.y - bounds.min.y) / voxelSize);
-                            int zHitIndex = Mathf.FloorToInt((meshHit.point.z - bounds.min.z) / voxelSize);
-                            if (VoxelMap.Index3dOutsideOfBounds(new int3(xHitIndex, yHitIndex, zHitIndex), mapDimensions)) continue;
-                            
-                            int flatHitindex = VoxelMap.GetFlatMapIndex(xHitIndex, yHitIndex, zHitIndex, mapDimensions);
-                            if (voxelMap.voxelData[flatHitindex].Filled) continue;
+                            bool pointContainedInMesh = checkIfPointContained(new Vector3(x, y, z), out RaycastHit closestHit, out RaycastHit[] allHits);
 
-                            Color color = getHitPointColor(meshHit);
-                            VoxelData voxelData = new VoxelData()
+                            //Voxelize Mehs's "walls" (voxelize RaycastHit positions)
+                            foreach (RaycastHit meshHit in allHits)
                             {
-                                Filled = true,
-                                r = (byte)(color.r * 255),
-                                g = (byte)(color.g * 255),
-                                b = (byte)(color.b * 255),
-                                a = (byte)(color.a * 255)
-                            };
-                            voxelMap.voxelData[flatHitindex] = voxelData;
-                        }
+                                int xHitIndex = Mathf.FloorToInt((meshHit.point.x -bounds.min.x) / voxelSize);
+                                int yHitIndex = Mathf.FloorToInt((meshHit.point.y - bounds.min.y) / voxelSize);
+                                int zHitIndex = Mathf.FloorToInt((meshHit.point.z - bounds.min.z) / voxelSize);
+                                if (VoxelMap.Index3dOutsideOfBounds(new int3(xHitIndex, yHitIndex, zHitIndex), mapDimensions)) continue;
+                                
+                                int flatHitindex = VoxelMap.GetFlatMapIndex(xHitIndex, yHitIndex, zHitIndex, mapDimensions);
+                                if (voxelMap.voxelData[flatHitindex].Filled) continue;
 
-                        //Voxelize Mesh's inner space (check if pos is inside of mesh and voxelize)
-                        int xScanPosIndex = (int)((x - scanStartPos.x) / voxelSize);
-                        int yScanPosIndex = (int)((y - scanStartPos.y) / voxelSize);
-                        int zScanPosIndex = (int)((z - scanStartPos.z) / voxelSize);
-                        int flatScanPosindex = VoxelMap.GetFlatMapIndex(xScanPosIndex, yScanPosIndex, zScanPosIndex, mapDimensions);
-                        if (voxelMap.voxelData[flatScanPosindex].Filled) continue;
+                                Color color = getHitPointColor(meshHit);
+                                VoxelData voxelData = new VoxelData()
+                                {
+                                    Filled = true,
+                                    r = (byte)(color.r * 255),
+                                    g = (byte)(color.g * 255),
+                                    b = (byte)(color.b * 255),
+                                    a = (byte)(color.a * 255)
+                                };
+                                voxelMap.voxelData[flatHitindex] = voxelData;
+                            }
 
-                        if (pointContainedInMesh)
-                        {
-                            Color color = getHitPointColor(closestHit);
-                            VoxelData voxelData = new VoxelData()
+                            //Voxelize Mesh's inner space (check if pos is inside of mesh and voxelize)
+                            int xScanPosIndex = (int)((x - scanStartPos.x) / voxelSize);
+                            int yScanPosIndex = (int)((y - scanStartPos.y) / voxelSize);
+                            int zScanPosIndex = (int)((z - scanStartPos.z) / voxelSize);
+                            int flatScanPosindex = VoxelMap.GetFlatMapIndex(xScanPosIndex, yScanPosIndex, zScanPosIndex, mapDimensions);
+                            if (voxelMap.voxelData[flatScanPosindex].Filled) continue;
+
+                            if (pointContainedInMesh)
                             {
-                                Filled = true,
-                                r = (byte)(color.r * 255),
-                                g = (byte)(color.g * 255),
-                                b = (byte)(color.b * 255),
-                                a = (byte)(color.a * 255)
-                            };
-                            voxelMap.voxelData[flatScanPosindex] = voxelData;
-                        }
+                                Color color = getHitPointColor(closestHit);
+                                VoxelData voxelData = new VoxelData()
+                                {
+                                    Filled = true,
+                                    r = (byte)(color.r * 255),
+                                    g = (byte)(color.g * 255),
+                                    b = (byte)(color.b * 255),
+                                    a = (byte)(color.a * 255)
+                                };
+                                voxelMap.voxelData[flatScanPosindex] = voxelData;
+                            }
 
-                        progress++;
+                            progress++;
+                        }
+                    }
+
+                    if (EditorUtility.DisplayCancelableProgressBar("Voxelizing Mesh", "Progress", progress / finalProgress))
+                    {
+                        EditorUtility.ClearProgressBar();
+                        return null;
                     }
                 }
-
-                if (EditorUtility.DisplayCancelableProgressBar("Voxelizing Mesh", "Progress", progress / finalProgress))
-                {
-                    EditorUtility.ClearProgressBar();
-                    return null;
-                }
             }
-
-            EditorUtility.ClearProgressBar();
-
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
 
             Debug.Log("Voxelizer done after: " + (EditorApplication.timeSinceStartup - startTime) + " seconds");
             return voxelMap;
